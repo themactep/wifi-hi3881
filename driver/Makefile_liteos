@@ -1,0 +1,141 @@
+include $(LITEOSTOPDIR)/config.mk
+
+WIFI_DRIVER_DIR := $(COMPLIE_ROOT)/driver
+
+LITEOS_CFLAGS    += -Werror
+
+ARFLAGS = cr
+
+LIB = $(ROOTOUT)/lib/libhi3881.a
+RM = -rm -rf
+
+##################path of compile file :start###############
+#####wifi#####
+OAL_PATH := oal/
+OAM_PATH := oam/
+FRW_PATH := frw/
+MAC_PATH := mac/common/
+HMAC_PATH := mac/hmac/
+HCC_PATH := hcc/
+WAL_PATH := wal/
+SEC_PATH := libsec/
+##################path of compile file :end###############
+
+$(warning WIFI_DRIVER_DIR=$(WIFI_DRIVER_DIR))
+CFG_LITEOS = y
+include $(WIFI_DRIVER_DIR)/env_config.mk
+
+ifeq ($(CFG_KERNEL_SMP), y)
+#添加-Wextra后，liteos引入了linux头文件，编译不过
+HI1131_HOST_CFLAGS += -fsigned-char -freg-struct-return -fno-strict-aliasing -Wtrampolines -Wdate-time -Wformat=2 -Wshadow -Wfloat-equal -fvisibility=hidden -fno-common -fstack-protector-strong
+else
+HI1131_HOST_CFLAGS += -Wextra -fsigned-char -freg-struct-return -fno-strict-aliasing -Wtrampolines -Wdate-time -Wformat=2 -Wshadow -Wfloat-equal -fvisibility=hidden -fno-common -fstack-protector-strong
+endif
+#该选项添加后liteos代码编译不过
+#HI1131_HOST_CFLAGS += -Wall
+#规范建议：在Debug版本中实施，Release版本不实施
+#HI1131_HOST_CFLAGS += -ftrapv
+
+HI1131_HOST_CFLAGS += $(HI1131_WIFI_CFLAGS)
+$(warning  HI1131_HOST_CFLAGS=$(HI1131_HOST_CFLAGS))
+
+####################################### platform module start #########################################
+oal-objs := oal_netbuf.o oal_util.o oal_net.o oal_main.o oal_mem.o
+
+oal-objs += oal_cfg80211.o oal_sdio_host.o oal_kernel_file.o exception_rst.o plat_firmware.o plat_pm.o plat_pm_wlan.o plat_sdio.o oal_chr.o
+
+ifeq ($(CFG_LITEOS), y)
+oal-objs += oal_skbuff.o hi_task.o hi_event.o hi_time.o os_sys.o
+endif
+oal-objs := $(addprefix $(OAL_PATH),$(oal-objs))
+
+oam-objs := oam_main.o oam_log.o
+oam-objs := $(addprefix $(OAM_PATH),$(oam-objs))
+
+board-objs := plat_board_common_sdio.o
+board-objs := $(addprefix $(OAL_PATH),$(board-objs))
+
+frw-objs += frw_event.o frw_event_sched.o frw_main.o frw_task.o frw_timer.o
+frw-objs := $(addprefix $(FRW_PATH),$(frw-objs))
+
+plat-objs = $(oal-objs) $(oam-objs) $(board-objs) $(frw-objs)
+####################################### platform module end #########################################
+
+####################################### securec lib start  #########################################
+sec-objs += memcpy_s.o memmove_s.o memset_s.o strcat_s.o strcpy_s.o strncat_s.o strncpy_s.o strtok_s.o \
+            snprintf_s.o vsnprintf_s.o
+sec-objs := $(addprefix $(SEC_PATH),$(sec-objs))
+####################################### securec lib end #########################################
+
+####################################### wifi module start #########################################
+hmac-objs := hmac_11i.o hmac_blockack.o hmac_chan_mgmt.o hmac_config.o hmac_crypto_tkip.o hmac_event.o hmac_uapsd.o \
+             hmac_device.o hmac_encap_frame.o hmac_encap_frame_ap.o hmac_encap_frame_sta.o hmac_frag.o hmac_fsm.o hmac_main.o \
+             hmac_mgmt_ap.o hmac_mgmt_bss_comm.o hmac_mgmt_classifier.o hmac_mgmt_sta.o hmac_protection.o hmac_user.o \
+             hmac_rx_data.o hmac_tx_data.o hmac_rx_filter.o hmac_scan.o hmac_sme_sta.o hmac_tx_amsdu.o hmac_vap.o
+             
+ifeq ($(CFG_EDCA_OPT_AP), y)
+hmac-objs += hmac_edca_opt.o
+endif
+ifeq ($(CFG_TCP_OPT), y)
+hmac-objs += hmac_tcp_opt.o
+endif
+ifeq ($(CFG_TX_CLASSIFY_LAN_TO_WLAN), y)
+hmac-objs += hmac_traffic_classify.o
+endif
+ifeq ($(CFG_WOW), y)
+hmac-objs += hmac_wow.o
+endif
+ifeq ($(CFG_ANY), y)
+hmac-objs += hmac_any.o
+endif
+ifeq ($(CFG_WAPI), y)
+hmac-objs += hmac_wapi.o hmac_wapi_wpi.o hmac_wapi_sms4.o
+endif
+hmac-objs := $(addprefix $(HMAC_PATH),$(hmac-objs))
+
+wal-objs  := wal_customize.o wal_cfg80211.o wal_11d.o wal_hipriv.o wal_event_msg.o hi_wifi_driver_api.o wal_linux_flowctl.o wal_ioctl.o wal_event.o wal_scan.o wal_main.o wal_regdb.o wal_net.o
+ifeq ($(CFG_LITEOS), y)
+wal-objs  += wal_wpa_ioctl.o wal_cfg80211_apt.o
+endif
+wal-objs  := $(addprefix $(WAL_PATH),$(wal-objs))
+
+mac-objs  := mac_data.o mac_device.o mac_frame.o mac_ie.o mac_user.o mac_vap.o mac_mib.o mac_resource.o mac_regdomain.o mac_pm_driver.o
+mac-objs  := $(addprefix $(MAC_PATH),$(mac-objs))
+
+hcc-objs  := hcc_comm.o hcc_task.o hcc_host.o hcc_hmac.o hmac_hcc_adapt.o
+hcc-objs  := $(addprefix $(HCC_PATH),$(hcc-objs))
+
+wifi-objs += $(mac-objs) $(hmac-objs) $(wal-objs) $(hcc-objs)
+####################################### wifi module end #########################################
+
+COBJS = $(wifi-objs) $(plat-objs)
+
+EXTRA_CFLAGS += $(HI1131_HOST_CFLAGS) -DWPA_27
+CROSS_COMPILE := $(CROSS_COMPILE)
+KDIR := $(KDIR)
+ARCH := arm
+
+PWD := $(shell pwd)
+hi3881-y += $(COBJS)
+obj-m = hi3881.o
+
+OBJS = $(COBJS)
+
+all: $(LIBOUT) $(LIB)
+
+$(COBJS): %.o : %.c
+	@echo "Compile $<"
+	@$(CC) $(WAR_AS_ERR) $(LITEOS_CFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
+
+$(LIB): $(OBJS)
+	$(AR) $(ARFLAGS) $@ $(OBJS)
+
+$(LIBOUT):
+	mkdir -p $(LIBOUT)
+
+clean:
+	@$(RM) $(OBJS) $(LIB) $(LIBOUT) *.bak *~
+
+.PHONY: all clean
+
+

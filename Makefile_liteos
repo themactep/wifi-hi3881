@@ -1,0 +1,59 @@
+################################################################################
+# 编译 wifi 驱动时，需要自行指定 liteos 系统的路径
+################################################################################
+LITEOSTOPDIR ?= /home/shell/liteos-spc050
+
+CURDIR := $(shell if [ "$$PWD" != "" ]; then echo $$PWD; else pwd; fi)
+include ${LITEOSTOPDIR}/config.mk
+include $(CURDIR)/build/config/config.mk
+ROOTOUT := $(CURDIR)/build/build_tmp/out/${LITEOS_PLATFORM}
+COMPLIE_ROOT := $(CURDIR)
+
+export LITEOSTOPDIR
+export ROOTOUT
+export COMPLIE_ROOT
+
+all: driver components
+
+clean: clean_prepare driver_clean components_clean sample_clean
+
+clean_prepare:
+	$(RM) -rf $(CURDIR)/build/build_tmp
+	$(RM) -rf $(CURDIR)/output
+
+$(ROOTOUT):
+	mkdir -p $(ROOTOUT)
+	mkdir -p $(ROOTOUT)/lib
+
+driver: $(ROOTOUT)
+	$(MAKE)	-C driver -f Makefile_liteos
+
+components: $(ROOTOUT)
+	$(MAKE)	-s -C components/liteos/wpa_supplicant
+	$(MAKE) -C components/liteos/iperf2
+	$(MAKE) -C components/liteos/at
+ifeq ($(CFG_SIGMA), y)
+	$(MAKE) -C components/liteos/Wi-FiTestSuite-9.2.0
+endif
+
+sample:
+	$(MAKE)	-C app/demo_liteos
+
+driver_clean:
+	$(RM) -rf $(ROOTOUT)/obj/driver
+	$(MAKE)	-C driver -f Makefile_liteos clean
+
+components_clean:
+	$(RM) -rf $(ROOTOUT)/obj/wpa_supplicant
+	$(RM) -rf $(ROOTOUT)/obj/iperf2
+	$(MAKE)	-s -C components/liteos/wpa_supplicant clean
+	$(MAKE) -C components/liteos/iperf2 clean
+	$(MAKE) -C components/liteos/at clean
+ifeq ($(CFG_SIGMA), y)
+	$(MAKE) -C components/liteos/Wi-FiTestSuite-9.2.0 clean
+endif
+
+sample_clean:
+	$(MAKE)	-C app/demo_liteos clean
+
+.PHONY: all driver components clean driver_clean components_clean sample sample_clean clean_prepare
