@@ -2,6 +2,10 @@
 # Main entry of build script.
 # Copyright (c) Hisilicon Technologies Co., Ltd. 2020-2020. All rights reserved.
 set -e
+
+export CROSS_COMPILE=mipsel-linux-
+export KDIR=/home/paul/output/cinnado_d1_t31l/build/linux-418473627666ad72bf030394311f247740b9ebe5
+
 CROOT=$(pwd)
 
 WIFI_DRIVER_DIR=$CROOT/driver

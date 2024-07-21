@@ -4,7 +4,8 @@
 # Author     Date          Version
 # hisilion   2020-3-29     V1.0
 ################################################################################
-KDIR=~/isvp/opensource/kernel
+KDIR ?= /home/paul/output/cinnado_d1_t31l/build/linux-a4417fd29af2f77a2b303bccb969b49c105fedc0
+CROSS_COMPILE ?= mipsel-linux-
 
 CURDIR := $(shell if [ "$$PWD" != "" ]; then echo $$PWD; else pwd; fi)
 SYSDIR ?= $(CURDIR)
@@ -24,7 +25,7 @@ TAGETS_CLEAN :=
 
 .PHONY: all linux_driver tools sample clean_prepare clean linux_driver_clean
 
-all: linux_driver sample
+all: linux_driver
 
 clean:clean_prepare linux_driver_clean sample_clean tools_clean
 
@@ -33,8 +34,10 @@ clean_prepare:
 	$(RM) -rf $(SYSDIR)/output
 
 linux_driver:
-	make ARCH=mips -C ${WIFI_DRIVER_DIR} WIFI_DRIVER_DIR=${WIFI_DRIVER_DIR} CROSS_COMPILE=mips-linux-uclibc-gnu- HISILICON_PLATFORM=$(HISILICON_PLATFORM) KDIR=${KDIR} clean; \
-	make ARCH=mips -C ${WIFI_DRIVER_DIR} WIFI_DRIVER_DIR=${WIFI_DRIVER_DIR} CROSS_COMPILE=mips-linux-uclibc-gnu- HISILICON_PLATFORM=$(HISILICON_PLATFORM) KDIR=${KDIR} -j16
+	make ARCH=mips -C ${WIFI_DRIVER_DIR} WIFI_DRIVER_DIR=${WIFI_DRIVER_DIR} CROSS_COMPILE=${CROSS_COMPILE} HISILICON_PLATFORM=$(HISILICON_PLATFORM) KDIR=${KDIR}
+
+clean:
+	make ARCH=mips -C ${WIFI_DRIVER_DIR} WIFI_DRIVER_DIR=${WIFI_DRIVER_DIR} CROSS_COMPILE=${CROSS_COMPILE} HISILICON_PLATFORM=$(HISILICON_PLATFORM) KDIR=${KDIR} clean
 
 sample:
 	$(MAKE) -C app/demo_linux HISILICON_PLATFORM=$(HISILICON_PLATFORM) all
@@ -46,7 +49,7 @@ sample_clean:
 	$(MAKE) -C app/demo_linux HISILICON_PLATFORM=$(HISILICON_PLATFORM) clean
 
 linux_driver_clean:
-	$(MAKE) -C ${WIFI_DRIVER_DIR} WIFI_DRIVER_DIR=${WIFI_DRIVER_DIR} CROSS_COMPILE=mips-linux-uclibc-gnu- HISILICON_PLATFORM=$(HISILICON_PLATFORM) KDIR=${KDIR} clean
+	$(MAKE) -C ${WIFI_DRIVER_DIR} WIFI_DRIVER_DIR=${WIFI_DRIVER_DIR} CROSS_COMPILE=${CROSS_COMPILE} HISILICON_PLATFORM=$(HISILICON_PLATFORM) KDIR=${KDIR} clean
 
 tools_clean:
 	$(MAKE) -C components/linux HISILICON_PLATFORM=$(HISILICON_PLATFORM) clean
